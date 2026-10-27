@@ -8,6 +8,9 @@ pub struct ContainerAttributes {
     pub decode_context: Option<(String, Literal)>,
     pub borrow_decode_bounds: Option<(String, Literal)>,
     pub encode_bounds: Option<(String, Literal)>,
+    /// `#[bincode(no_niche)]`: don't declare niches, which wrappers like `Option` would otherwise
+    /// use in place of a tag when the config enables them.
+    pub no_niche: bool,
 }
 
 impl Default for ContainerAttributes {
@@ -19,6 +22,7 @@ impl Default for ContainerAttributes {
             decode_context: None,
             encode_bounds: None,
             borrow_decode_bounds: None,
+            no_niche: false,
         }
     }
 }
@@ -86,6 +90,9 @@ impl FromAttribute for ContainerAttributes {
                     } else {
                         return Err(Error::custom_at("Should be a literal str", val.span()));
                     }
+                }
+                ParsedAttribute::Tag(i) if i.to_string() == "no_niche" => {
+                    result.no_niche = true;
                 }
                 ParsedAttribute::Tag(i) => {
                     return Err(Error::custom_at("Unknown field attribute", i.span()))
