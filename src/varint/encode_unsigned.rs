@@ -7,6 +7,10 @@ use crate::{config::Endianness, enc::write::Writer, error::EncodeError};
 /// Writing the tag and the value separately doubles the number of `write` calls for every
 /// multi-byte varint, which is measurable for writers where each call has a fixed cost (e.g.
 /// growing a `Vec`).
+///
+/// This is a macro rather than a generic function because the buffer is sized
+/// `[u8; 1 + size_of::<T>()]`, and array lengths that depend on generic parameters aren't
+/// supported on stable Rust.
 macro_rules! write_tagged {
     ($writer:expr, $endian:expr, $tag:expr, $val:expr, $ty:ty) => {{
         let val: $ty = $val;
