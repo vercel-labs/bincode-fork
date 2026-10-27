@@ -1,5 +1,8 @@
 [workspace]
 members = ["derive", "compatibility"]
+# Prefer dependency versions that support our `rust-version`, so that the MSRV CI jobs
+# keep building when a dependency raises its own MSRV.
+resolver = "3"
 
 [package]
 name = "bincode"
