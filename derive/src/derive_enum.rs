@@ -162,23 +162,24 @@ impl DeriveEnum {
                                     let var_name = || {
                                         field_info.name.to_string_with_prefix(TUPLE_FIELD_PREFIX)
                                     };
+                                    let enc = field_info.attributes.encoder_expr(crate_name);
                                     if field_info.attributes.skip {
                                         continue;
                                     } else if let Some(with) = &field_info.attributes.with {
                                         body.push_parsed(format!(
-                                            "{}::encode({}, encoder)?;",
+                                            "{}::encode({}, {enc})?;",
                                             with,
                                             var_name(),
                                         ))?;
                                     } else if field_info.attributes.with_serde {
                                         body.push_parsed(format!(
-                                            "{0}::Encode::encode(&{0}::serde::Compat({1}), encoder)?;",
+                                            "{0}::Encode::encode(&{0}::serde::Compat({1}), {enc})?;",
                                             crate_name,
                                             var_name(),
                                         ))?;
                                     } else {
                                         body.push_parsed(format!(
-                                            "{0}::Encode::encode({1}, encoder)?;",
+                                            "{0}::Encode::encode({1}, {enc})?;",
                                             crate_name,
                                             var_name(),
                                         ))?;
@@ -360,6 +361,7 @@ impl DeriveEnum {
                                             }
                                             variant_body.punct(':');
                                             let attributes = field.attributes().get_attribute::<FieldAttributes>()?.unwrap_or_default();
+                                            let dec = attributes.decoder_expr(crate_name);
                                             if attributes.skip {
                                                 if let Some((default_fn, _)) = attributes.default_fn {
                                                     variant_body
@@ -373,19 +375,19 @@ impl DeriveEnum {
                                             } else if let Some(with) = &attributes.with {
                                                 variant_body
                                                     .push_parsed(format!(
-                                                        "{}::decode(decoder)?,",
+                                                        "{}::decode({dec})?,",
                                                         with,
                                                     ))?;
                                             } else if attributes.with_serde {
                                                 variant_body
                                                     .push_parsed(format!(
-                                                        "<{0}::serde::Compat<_> as {0}::Decode::<__D::Context>>::decode(decoder)?.0,",
+                                                        "<{0}::serde::Compat<_> as {0}::Decode::<__D::Context>>::decode({dec})?.0,",
                                                         crate_name
                                                     ))?;
                                             } else {
                                                 variant_body
                                                     .push_parsed(format!(
-                                                        "{}::Decode::<__D::Context>::decode(decoder)?,",
+                                                        "{}::Decode::<__D::Context>::decode({dec})?,",
                                                         crate_name
                                                     ))?;
                                             }
@@ -491,6 +493,7 @@ impl DeriveEnum {
                                             }
                                             variant_body.punct(':');
                                             let attributes = field.attributes().get_attribute::<FieldAttributes>()?.unwrap_or_default();
+                                            let dec = attributes.decoder_expr(crate_name);
                                             if attributes.skip {
                                                 if let Some((default_fn, _)) = attributes.default_fn {
                                                     variant_body
@@ -504,14 +507,14 @@ impl DeriveEnum {
                                             } else if let Some(with) = &attributes.with {
                                                 variant_body
                                                     .push_parsed(format!(
-                                                        "{}::borrow_decode(decoder)?,",
+                                                        "{}::borrow_decode({dec})?,",
                                                         with,
                                                     ))?;
                                             } else if attributes.with_serde {
                                                 variant_body
-                                                    .push_parsed(format!("<{0}::serde::BorrowCompat<_> as {0}::BorrowDecode::<__D::Context>>::borrow_decode(decoder)?.0,", crate_name))?;
+                                                    .push_parsed(format!("<{0}::serde::BorrowCompat<_> as {0}::BorrowDecode::<__D::Context>>::borrow_decode({dec})?.0,", crate_name))?;
                                             } else {
-                                                variant_body.push_parsed(format!("{}::BorrowDecode::<__D::Context>::borrow_decode(decoder)?,", crate_name))?;
+                                                variant_body.push_parsed(format!("{}::BorrowDecode::<__D::Context>::borrow_decode({dec})?,", crate_name))?;
                                             }
                                         }
                                     }

@@ -231,6 +231,48 @@ impl InternalIntEncodingConfig for Varint {
     const INT_ENCODING: IntEncoding = IntEncoding::Variable;
 }
 
+/// A [Config] that keeps the endianness and byte limit of `C`, but always uses fixed integer
+/// encoding.
+///
+/// You normally don't name this type yourself. It is the config of the encoders and decoders
+/// returned by [Encoder::with_fixint](crate::enc::Encoder::with_fixint) and
+/// [Decoder::with_fixint](crate::de::Decoder::with_fixint), which the `#[bincode(fixint)]`
+/// field attribute uses.
+pub struct FixintConfig<C>(PhantomData<C>);
+
+impl<C> FixintConfig<C> {
+    pub(crate) const fn new() -> Self {
+        Self(PhantomData)
+    }
+}
+
+// Implemented by hand so that these don't require `C: Copy` / `C: Debug`.
+impl<C> Copy for FixintConfig<C> {}
+
+impl<C> Clone for FixintConfig<C> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<C> core::fmt::Debug for FixintConfig<C> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str("FixintConfig")
+    }
+}
+
+impl<C: InternalEndianConfig> InternalEndianConfig for FixintConfig<C> {
+    const ENDIAN: Endianness = C::ENDIAN;
+}
+
+impl<C> InternalIntEncodingConfig for FixintConfig<C> {
+    const INT_ENCODING: IntEncoding = IntEncoding::Fixed;
+}
+
+impl<C: InternalLimitConfig> InternalLimitConfig for FixintConfig<C> {
+    const LIMIT: Option<usize> = C::LIMIT;
+}
+
 /// Sets an unlimited byte limit.
 #[derive(Copy, Clone, Debug)]
 pub struct NoLimit;

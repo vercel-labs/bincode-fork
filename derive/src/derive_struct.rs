@@ -43,21 +43,22 @@ impl DeriveStruct {
                             .attributes()
                             .get_attribute::<FieldAttributes>()?
                             .unwrap_or_default();
+                        let enc = attributes.encoder_expr(crate_name);
                         if attributes.skip {
                             continue;
                         } else if let Some(with) = attributes.with {
                             fn_body.push_parsed(format!(
-                                "{}::encode(&self.{}, encoder)?;",
+                                "{}::encode(&self.{}, {enc})?;",
                                 with, field
                             ))?;
                         } else if attributes.with_serde {
                             fn_body.push_parsed(format!(
-                                "{0}::Encode::encode(&{0}::serde::Compat(&self.{1}), encoder)?;",
+                                "{0}::Encode::encode(&{0}::serde::Compat(&self.{1}), {enc})?;",
                                 crate_name, field
                             ))?;
                         } else {
                             fn_body.push_parsed(format!(
-                                "{}::Encode::encode(&self.{}, encoder)?;",
+                                "{}::Encode::encode(&self.{}, {enc})?;",
                                 crate_name, field
                             ))?;
                         }
@@ -115,6 +116,7 @@ impl DeriveStruct {
                         if let Some(fields) = self.fields.as_ref() {
                             for field in fields.names() {
                                 let attributes = field.attributes().get_attribute::<FieldAttributes>()?.unwrap_or_default();
+                                let dec = attributes.decoder_expr(crate_name);
                                 if attributes.skip {
                                     if let Some((default_fn, _)) = attributes.default_fn {
                                         struct_body
@@ -133,14 +135,14 @@ impl DeriveStruct {
                                 } else if let Some(with) = attributes.with {
                                     struct_body
                                         .push_parsed(format!(
-                                            "{}: {}::decode(decoder)?,",
+                                            "{}: {}::decode({dec})?,",
                                             field,
                                             with,
                                         ))?;
                                 } else if attributes.with_serde {
                                     struct_body
                                         .push_parsed(format!(
-                                            "{1}: (<{0}::serde::Compat<_> as {0}::Decode::<{2}>>::decode(decoder)?).0,",
+                                            "{1}: (<{0}::serde::Compat<_> as {0}::Decode::<{2}>>::decode({dec})?).0,",
                                             crate_name,
                                             field,
                                             decode_context,
@@ -148,7 +150,7 @@ impl DeriveStruct {
                                 } else {
                                     struct_body
                                         .push_parsed(format!(
-                                            "{1}: {0}::Decode::decode(decoder)?,",
+                                            "{1}: {0}::Decode::decode({dec})?,",
                                             crate_name,
                                             field
                                         ))?;
@@ -209,6 +211,7 @@ impl DeriveStruct {
                         if let Some(fields) = self.fields.as_ref() {
                             for field in fields.names() {
                                 let attributes = field.attributes().get_attribute::<FieldAttributes>()?.unwrap_or_default();
+                                let dec = attributes.decoder_expr(&crate_name);
                                 if attributes.skip {
                                     if let Some((default_fn, _)) = attributes.default_fn {
                                         struct_body
@@ -227,14 +230,14 @@ impl DeriveStruct {
                                 } else if let Some(with) = attributes.with {
                                     struct_body
                                         .push_parsed(format!(
-                                            "{}: {}::borrow_decode(decoder)?,",
+                                            "{}: {}::borrow_decode({dec})?,",
                                             field,
                                             with,
                                         ))?;
                                 } else if attributes.with_serde {
                                     struct_body
                                         .push_parsed(format!(
-                                            "{1}: (<{0}::serde::BorrowCompat<_> as {0}::BorrowDecode::<'_, {2}>>::borrow_decode(decoder)?).0,",
+                                            "{1}: (<{0}::serde::BorrowCompat<_> as {0}::BorrowDecode::<'_, {2}>>::borrow_decode({dec})?).0,",
                                             crate_name,
                                             field,
                                             decode_context,
@@ -242,7 +245,7 @@ impl DeriveStruct {
                                 } else {
                                     struct_body
                                         .push_parsed(format!(
-                                            "{1}: {0}::BorrowDecode::<'_, {2}>::borrow_decode(decoder)?,",
+                                            "{1}: {0}::BorrowDecode::<'_, {2}>::borrow_decode({dec})?,",
                                             crate_name,
                                             field,
                                             decode_context,

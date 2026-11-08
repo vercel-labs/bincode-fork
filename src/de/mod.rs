@@ -17,7 +17,7 @@ use crate::{
 
 pub mod read;
 
-pub use self::decoder::DecoderImpl;
+pub use self::decoder::{DecoderImpl, FixintDecoder};
 
 /// Trait that makes a type able to be decoded, akin to serde's `DeserializeOwned` trait.
 ///
@@ -159,6 +159,24 @@ pub trait Decoder: Sealed {
             decoder: self,
             context,
         }
+    }
+
+    /// Wraps this decoder so that everything decoded through it uses fixed integer encoding,
+    /// regardless of whether the config uses [Varint](crate::config::Varint) or
+    /// [Fixint](crate::config::Fixint). The endianness and byte limit of the config are preserved.
+    ///
+    /// This is the counterpart of [Encoder::with_fixint](crate::enc::Encoder::with_fixint), and is
+    /// used by the derive macros for fields annotated with `#[bincode(fixint)]`.
+    ///
+    /// ```
+    /// # use bincode::de::{Decode, Decoder, DecoderImpl, read::SliceReader};
+    /// let bytes = [1, 1, 0, 0, 0, 0, 0, 0, 0];
+    /// let mut decoder = DecoderImpl::new(SliceReader::new(&bytes), bincode::config::standard(), ());
+    /// assert_eq!(u64::decode(&mut decoder).unwrap(), 1); // varint: 1 byte
+    /// assert_eq!(u64::decode(&mut decoder.with_fixint()).unwrap(), 1); // fixint: 8 bytes
+    /// ```
+    fn with_fixint(&mut self) -> FixintDecoder<'_, Self> {
+        FixintDecoder::new(self)
     }
 
     /// Returns a mutable reference to the reader

@@ -9,7 +9,7 @@ use crate::{config::Config, error::EncodeError, utils::Sealed};
 
 pub mod write;
 
-pub use self::encoder::EncoderImpl;
+pub use self::encoder::{EncoderImpl, FixintEncoder};
 
 /// Any source that can be encoded. This trait should be implemented for all types that you want to be able to use with any of the `encode_with` methods.
 ///
@@ -65,6 +65,28 @@ pub trait Encoder: Sealed {
 
     /// Returns a reference to the config
     fn config(&self) -> &Self::C;
+
+    /// Wraps this encoder so that everything encoded through it uses fixed integer encoding,
+    /// regardless of whether the config uses [Varint](crate::config::Varint) or
+    /// [Fixint](crate::config::Fixint). The endianness of the config is preserved.
+    ///
+    /// This is useful for values such as hashes or bit-packed integers, which are usually large and
+    /// would not benefit from (or would even grow under) variable integer encoding.
+    ///
+    /// The derive macros use this for fields annotated with `#[bincode(fixint)]`. Make sure to
+    /// decode the value with [Decoder::with_fixint](crate::de::Decoder::with_fixint).
+    ///
+    /// ```
+    /// # use bincode::enc::{Encode, Encoder, EncoderImpl, write::SliceWriter};
+    /// let mut buffer = [0u8; 16];
+    /// let mut encoder = EncoderImpl::new(SliceWriter::new(&mut buffer), bincode::config::standard());
+    /// 1u64.encode(&mut encoder).unwrap(); // varint: 1 byte
+    /// 1u64.encode(&mut encoder.with_fixint()).unwrap(); // fixint: 8 bytes
+    /// assert_eq!(encoder.into_writer().bytes_written(), 9);
+    /// ```
+    fn with_fixint(&mut self) -> FixintEncoder<'_, Self> {
+        FixintEncoder::new(self)
+    }
 }
 
 impl<T> Encoder for &mut T
