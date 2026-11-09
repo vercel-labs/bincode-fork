@@ -169,6 +169,12 @@ mod derive {
         },
     }
 
+    #[derive(Decode, Encode, PartialEq, Eq, Debug)]
+    pub struct StructWithSerdeFixint {
+        #[bincode(with_serde, fixint)]
+        pub serde: SerdeType,
+    }
+
     #[test]
     fn test_serde_derive() {
         fn test_encode_decode<T>(start: T, expected_len: usize)
@@ -191,6 +197,12 @@ mod derive {
                 serde: SerdeType { a: 5 },
             },
             1,
+        );
+        test_encode_decode(
+            StructWithSerdeFixint {
+                serde: SerdeType { a: 5 },
+            },
+            4,
         );
         test_encode_decode(EnumWithSerde::Unit(SerdeType { a: 5 }), 2);
         test_encode_decode(

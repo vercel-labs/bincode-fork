@@ -1,5 +1,8 @@
 use super::{write::Writer, Encoder};
-use crate::{config::Config, utils::Sealed};
+use crate::{
+    config::{Config, FixintConfig},
+    utils::Sealed,
+};
 
 /// An Encoder that writes bytes into a given writer `W`.
 ///
@@ -55,3 +58,38 @@ impl<W: Writer, C: Config> Encoder for EncoderImpl<W, C> {
 }
 
 impl<W: Writer, C: Config> Sealed for EncoderImpl<W, C> {}
+
+/// An [Encoder] that forwards to another encoder, but always uses fixed integer encoding.
+///
+/// Created by [Encoder::with_fixint].
+pub struct FixintEncoder<'a, E: Encoder + ?Sized> {
+    encoder: &'a mut E,
+    config: FixintConfig<E::C>,
+}
+
+impl<'a, E: Encoder + ?Sized> FixintEncoder<'a, E> {
+    pub(crate) const fn new(encoder: &'a mut E) -> Self {
+        FixintEncoder {
+            encoder,
+            config: FixintConfig::new(),
+        }
+    }
+}
+
+impl<E: Encoder + ?Sized> Encoder for FixintEncoder<'_, E> {
+    type W = E::W;
+
+    type C = FixintConfig<E::C>;
+
+    #[inline]
+    fn writer(&mut self) -> &mut Self::W {
+        self.encoder.writer()
+    }
+
+    #[inline]
+    fn config(&self) -> &Self::C {
+        &self.config
+    }
+}
+
+impl<E: Encoder + ?Sized> Sealed for FixintEncoder<'_, E> {}

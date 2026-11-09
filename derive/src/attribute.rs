@@ -106,6 +106,29 @@ pub struct FieldAttributes {
     pub skip: bool,
     pub default_fn: Option<(String, Literal)>,
     pub with: Option<String>,
+    pub fixint: bool,
+}
+
+impl FieldAttributes {
+    /// The expression to pass as the encoder when encoding this field.
+    /// `encoder` is assumed to be a `&mut impl Encoder` in scope.
+    pub fn encoder_expr(&self, crate_name: &str) -> String {
+        if self.fixint {
+            format!("&mut {crate_name}::enc::Encoder::with_fixint(encoder)")
+        } else {
+            "encoder".to_string()
+        }
+    }
+
+    /// The expression to pass as the decoder when decoding this field.
+    /// `decoder` is assumed to be a `&mut impl Decoder` in scope.
+    pub fn decoder_expr(&self, crate_name: &str) -> String {
+        if self.fixint {
+            format!("&mut {crate_name}::de::Decoder::with_fixint(decoder)")
+        } else {
+            "decoder".to_string()
+        }
+    }
 }
 
 impl FromAttribute for FieldAttributes {
@@ -131,8 +154,16 @@ impl FromAttribute for FieldAttributes {
                         return Err(mutually_exclusive_err(&i, "with_serde"));
                     } else if result.with.is_some() {
                         return Err(mutually_exclusive_err(&i, "with"));
+                    } else if result.fixint {
+                        return Err(mutually_exclusive_err(&i, "fixint"));
                     }
                     result.skip = true;
+                }
+                ParsedAttribute::Tag(i) if i.to_string() == "fixint" => {
+                    if result.skip {
+                        return Err(mutually_exclusive_err(&i, "skip"));
+                    }
+                    result.fixint = true;
                 }
                 ParsedAttribute::Property(key, val) if key.to_string() == "default" => {
                     let val_string = val.to_string();

@@ -2,7 +2,11 @@ use super::{
     read::{BorrowReader, Reader},
     BorrowDecoder, Decoder,
 };
-use crate::{config::Config, error::DecodeError, utils::Sealed};
+use crate::{
+    config::{Config, FixintConfig},
+    error::DecodeError,
+    utils::Sealed,
+};
 
 /// A Decoder that reads bytes from a given reader `R`.
 ///
@@ -136,6 +140,66 @@ impl<Context, D: Decoder + ?Sized> Decoder for WithContext<'_, D, Context> {
 
 impl<'de, C, D: BorrowDecoder<'de>> BorrowDecoder<'de> for WithContext<'_, D, C> {
     type BR = D::BR;
+    fn borrow_reader(&mut self) -> &mut Self::BR {
+        self.decoder.borrow_reader()
+    }
+}
+
+/// A [Decoder] that forwards to another decoder, but always uses fixed integer encoding.
+///
+/// Created by [Decoder::with_fixint].
+pub struct FixintDecoder<'a, D: Decoder + ?Sized> {
+    decoder: &'a mut D,
+    config: FixintConfig<D::C>,
+}
+
+impl<'a, D: Decoder + ?Sized> FixintDecoder<'a, D> {
+    pub(crate) const fn new(decoder: &'a mut D) -> Self {
+        FixintDecoder {
+            decoder,
+            config: FixintConfig::new(),
+        }
+    }
+}
+
+impl<D: Decoder + ?Sized> Sealed for FixintDecoder<'_, D> {}
+
+impl<D: Decoder + ?Sized> Decoder for FixintDecoder<'_, D> {
+    type R = D::R;
+
+    type C = FixintConfig<D::C>;
+
+    type Context = D::Context;
+
+    fn context(&mut self) -> &mut Self::Context {
+        self.decoder.context()
+    }
+
+    #[inline]
+    fn reader(&mut self) -> &mut Self::R {
+        self.decoder.reader()
+    }
+
+    #[inline]
+    fn config(&self) -> &Self::C {
+        &self.config
+    }
+
+    #[inline]
+    fn claim_bytes_read(&mut self, n: usize) -> Result<(), DecodeError> {
+        self.decoder.claim_bytes_read(n)
+    }
+
+    #[inline]
+    fn unclaim_bytes_read(&mut self, n: usize) {
+        self.decoder.unclaim_bytes_read(n)
+    }
+}
+
+impl<'de, D: BorrowDecoder<'de> + ?Sized> BorrowDecoder<'de> for FixintDecoder<'_, D> {
+    type BR = D::BR;
+
+    #[inline]
     fn borrow_reader(&mut self) -> &mut Self::BR {
         self.decoder.borrow_reader()
     }
